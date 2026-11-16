@@ -48,6 +48,13 @@ body.deep .scrim::after,body.tab-apps .scrim::after,body.tab-settings .scrim::af
 .info b{color:#fff;font-weight:500}
 .info .sep{opacity:.5}
 .info .gap{width:18px}
+/* Wanted Level stars (2026-11-16): lit ones white, the rest faint; they flash while evading */
+.info .wanted{gap:3px;margin-right:4px}
+.info .wanted i{display:block;width:24px;height:24px}
+.info .wanted svg{width:24px;height:24px;opacity:1;fill:rgba(0,0,0,.25);stroke:rgba(255,255,255,.55);stroke-width:1.5}
+.info .wanted i.on svg{fill:#fff;stroke:#fff}
+.info .wanted.evading i.on svg{animation:evade .8s steps(1) infinite}
+@keyframes evade{50%{fill:rgba(0,0,0,.25);stroke:rgba(255,255,255,.55)}}
 .info span.gta:not(.gap){display:block}  /* plain text flow: no flex gap inside "GTA VI in 7 days" */
 .dot{width:9px;height:9px;border-radius:5px;background:#7ee2a8;box-shadow:0 0 0 3px rgba(126,226,168,.18)}
 .dot.bad{background:#ff8a7a;box-shadow:0 0 0 3px rgba(255,138,122,.2)}

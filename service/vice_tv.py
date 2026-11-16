@@ -99,11 +99,17 @@ def clean_problem(m):
 
 def homelab_status():
     try:
-        probs = list((json.load(open(HOMELAB_STATE)).get("problems") or {}).values())
+        st = json.load(open(HOMELAB_STATE))
+        probs = list((st.get("problems") or {}).values())
+        w = st.get("wanted") or {}
     except (OSError, ValueError):
-        probs = []
-    if probs:  # a real problem beats "All 6 services up"
-        return {"good": False, "line": clean_problem(probs[0]) + (f" · +{len(probs) - 1} more" if len(probs) > 1 else "")}
+        probs, w = [], {}
+    # Wanted Level (2026-11-16, ~/homelab/discord-bot/wanted.py): stars = level, evading = the level flashing as it clears
+    stars = {"stars": w.get("stars", 0), "evading": w.get("evading", 0)}
+    if probs:  # a real problem beats "All 6 services up"; the worst one first (the Wanted Level's order)
+        crimes = w.get("crimes") or []
+        first = crimes[0]["what"] if crimes else probs[0]
+        return {"good": False, "line": clean_problem(first) + (f" · +{len(probs) - 1} more" if len(probs) > 1 else ""), **stars}
     try:
         get = lambda u: json.load(urllib.request.urlopen(u, timeout=5))  # noqa: E731
         page, beats = get(KUMA.format("status-page")), get(KUMA.format("status-page/heartbeat"))
@@ -118,7 +124,7 @@ def homelab_status():
             if hb.get("status") != 1:
                 down.append(m["name"])
     if not down:
-        return {"good": True, "line": f"All {total} services up"}
+        return {"good": True, "line": f"All {total} services up", **stars}
     if len(down) == 1:
         return {"good": False, "line": f"{down[0]} is down"}
     return {"good": False, "line": f"{len(down)} of {total} services down"}

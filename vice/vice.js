@@ -151,8 +151,19 @@
     if (!VICE) return put("lab", "");
     http("GET", VICE + "/api/status", null, function (code, r) {
       if (code !== 200 || !r) put("lab", '<span class="dot off"></span><span>PC offline</span>');
-      else put("lab", '<span class="dot' + (r.good ? "" : " bad") + '"></span><span>' + esc(r.line) + "</span>");
+      else put("lab", (r.stars || r.evading ? wantedStars(r.stars || 0, r.evading || 0)  // the stars replace the dot
+               : '<span class="dot' + (r.good ? "" : " bad") + '"></span>') + "<span>" + esc(r.line) + "</span>");
     });
+  }
+  // Wanted Level (2026-11-16, ~/homelab/discord-bot/wanted.py): five stars before the line while wanted; as it clears
+  // ("evading") the last level flashes for ~2 minutes. Nothing when it's clean.
+  var STAR = '<svg viewBox="0 0 24 24"><path d="M12 2.6l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z"/></svg>';
+  function wantedStars(n, evading) {
+    var lit = n || evading;
+    if (!lit) return "";
+    var h = '<span class="wanted' + (n ? "" : " evading") + '">';
+    for (var i = 0; i < 5; i++) h += '<i class="' + (i < lit ? "on" : "") + '">' + STAR + "</i>";
+    return h + "</span>";
   }
 
   // ---------- Vice Radio: the PC's 80s station (~/homelab/radio), relayed by vice-tv ----------
@@ -988,7 +999,7 @@
     readConfig();
     (function next() { tick(); setTimeout(next, 60000 - (Date.now() % 60000) + 50); })();  // the clock changes exactly on the minute
     drawLight(); refresh();
-    every(60000, lab); every(30000, readPs5); every(30000, readPs3); every(30000, readSwitch); every(15 * 60000, weather); every(10 * 60000, readGta);
+    every(30000, lab); every(30000, readPs5); every(30000, readPs3); every(30000, readSwitch); every(15 * 60000, weather); every(10 * 60000, readGta);
     readRadio(); every(10000, readRadio); every(5000, checkIdle);
     focus($("row-fav").children[0] || tabs[0]);
     if (param("tab")) { showTab(param("tab")); focus(tabs.filter(function (t) { return t.dataset.tab === tab; })[0]); }  // preview only
