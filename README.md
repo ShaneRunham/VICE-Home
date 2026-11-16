@@ -19,7 +19,7 @@ homelab in one place.
 Python service on the PC that answers it: PS5 state, games, covers, light and weather. `screensaver/` is a
 QML screensaver. `tools/` has the build, test and performance scripts.
 
-The look builds on [Luma](https://github.com/ecklf/luma) (MIT, see `vice/LUMA-LICENSE`).
+The look builds on [Luma](https://github.com/ecklf/lg-luma) (MIT, see `vice/LUMA-LICENSE`).
 
 > A cleaned copy of my private repo, updated automatically: personal details are swapped for placeholders and
 > app logos, artwork, fonts and videos are left out.
