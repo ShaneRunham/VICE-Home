@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1920, height=1080">
+<title>Home</title>
+<link rel="stylesheet" href="vice.css">
+</head>
+<body>
+<!-- Vice TV home: Luma's look on couch-tv's LG app. lg/build.py adds settings.js, webos-apps.js and
+     webos.js before config.js (the bridge settings); vice.js draws everything. -->
+<video class="bgvid" id="bgvid" src="wall.mp4" poster="img/poster.jpg" autoplay muted loop playsinline></video>
+<div class="bgstill" id="bgstill"></div>  <!-- the wallpaper while Vice Radio plays (see wallForRadio) -->
+<div class="scrim" id="scrim"></div>
+
+<header class="top">
+  <div class="clock" id="clock"></div>
+  <nav class="pill" id="tabs">
+    <span class="tab on" data-tab="home">Home</span>
+    <span class="tab" data-tab="apps">Apps</span>
+    <span class="tab" data-tab="settings">Settings</span>
+  </nav>
+  <div class="rounds">
+    <span class="round" id="btn-ask" data-act="ask" title="JARVIS"></span>
+    <span class="round" id="btn-light" data-act="light" title="Light"></span>
+  </div>
+</header>
+
+<main class="page" id="page-home">
+  <section class="hero" id="hero">
+    <div class="date" id="date"></div>
+    <h1 class="greet" id="greet"></h1>
+    <div class="info">
+      <span class="wx" id="wx"></span>
+      <span class="gap gta"></span>
+      <span class="gta" id="gta"></span>
+      <span class="gap"></span>
+      <span class="lab" id="lab"></span>
+      <span class="gap np" style="display:none"></span>
+      <span class="np" id="np" style="display:none"></span>
+    </div>
+  </section>
+  <div class="rows" id="rows">
+    <div class="label">Favorites</div>
+    <div class="row" id="row-fav"></div>
+    <div class="label">Inputs</div>
+    <div class="row" id="row-inputs"></div>
+    <div class="label">Play on PC <i id="pc-note">Streams from the PC with Moonlight</i></div>
+    <div class="row" id="row-pc"></div>
+    <div class="label gta-news hidden">GTA VI news <i>From Rockstar Newswire</i></div>
+    <div class="row" id="row-gta"></div>
+  </div>
+</main>
+
+<main class="page hidden" id="page-apps">
+  <div class="grid-wrap"><div class="grid" id="grid"></div></div>
+</main>
+
+<main class="page hidden" id="page-settings">
+  <div class="set-wrap">
+    <div class="row" id="row-set"></div>
+    <div class="about" id="about"></div>
+  </div>
+</main>
+
+<!-- light panel -->
+<div class="sheet hidden" id="sheet-light">
+  <div class="panel">
+    <h2>Light</h2>
+    <div class="prow" id="light-a"></div>
+    <div class="prow" id="light-b"></div>
+    <div class="prow" id="light-c"></div>
+    <p class="note" id="light-note"></p>
+  </div>
+</div>
+
+<!-- Vice Radio menu (OK on the tile while it plays) -->
+<div class="sheet hidden" id="sheet-radio">
+  <div class="panel">
+    <h2>Vice Radio</h2>
+    <p class="note" id="radio-note"></p>
+    <div class="prow" id="radio-btns"></div>
+  </div>
+</div>
+
+<div class="sheet hidden" id="sheet-apps">
+  <div class="panel">
+    <h2>Hide apps</h2>
+    <div id="apps-list"></div>
+    <p class="note">Hidden apps leave the Apps page. Select one again to bring it back.</p>
+  </div>
+</div>
+
+<!-- JARVIS (Ask) -->
+<div class="sheet hidden" id="sheet-ask">
+  <div class="panel wide">
+    <h2>JARVIS</h2>
+    <p class="note">Select the microphone on the keyboard and say what you want, like "put on the latest Bluey". Or type, or use the phone remote.</p>
+    <div class="askbar"><input id="ask-in" type="text" autocomplete="off" placeholder="What do you want to watch?"><span class="btn" id="ask-go">Ask</span></div>
+    <div class="reply" id="ask-out"></div>
+    <div class="prow" id="ask-quick"></div>
+  </div>
+</div>
+
+<!-- GTA VI news post (Rockstar Newswire): picture, words, video and photos -->
+<div class="sheet hidden" id="sheet-news">
+  <div class="panel news">
+    <img class="nhero" id="news-hero" alt="">
+    <div class="nbody">
+      <div class="nmeta" id="news-meta"></div>
+      <h2 id="news-title"></h2>
+      <p class="note" id="news-sub"></p>
+      <div class="prow" id="news-btns"></div>
+      <div class="nphotos" id="news-photos"></div>
+    </div>
+  </div>
+</div>
+<div class="viewer hidden" id="viewer"><img id="viewer-img" alt=""><div class="vcap"><span id="viewer-alt"></span><b id="viewer-n"></b></div></div>
+
+<!-- Vice Radio now playing: takes the screen after 3 idle minutes while the radio plays -->
+<div class="nowview off" id="nowview">
+  <div class="nv-art" id="nv-art"></div>
+  <div class="nv-txt">
+    <div class="nv-src" id="nv-src"></div>
+    <h2 id="nv-title"></h2>
+    <div class="nv-artist" id="nv-artist"></div>
+    <div class="nv-album" id="nv-album"></div>
+  </div>
+  <div class="nv-hint" id="nv-hint">→ Skip</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="card osd" id="osd"></div>  <!-- Vice OSD pop-ups (vice-layer-plan.md) -->
+
+<script src="config.js"></script>
+<script src="vice.js"></script>
+</body>
+</html>

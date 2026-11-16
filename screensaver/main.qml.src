@@ -1,0 +1,90 @@
+/*
+ * Vice screensaver: the Vice Home art with a clock, the weather and one status line from the PC (vice-tv).
+ * Mounted by Hearth's screensaver.sh (it replaces Hearth's main.qml.template; settings like power-off still apply).
+ * Built by ~/tv-launcher/screensaver/install.sh. Everything drifts a few pixels each minute (OLED care).
+ */
+import QtQuick 2.5
+import Eos.Window 0.1
+
+WebOSWindow {
+    id: win
+    width: 1920
+    height: 1080
+    windowType: "_WEBOS_WINDOW_TYPE_SCREENSAVER"
+    appId: "com.webos.app.screensaver"
+    title: "Screen Saver"
+    visible: true
+    color: "black"
+
+    property string api: "http://192.168.0.10:5401"
+    property string key: "@KEY@"
+    property string weather: ""
+    property string status: ""
+    property int drift: 0
+
+    Rectangle { anchors.fill: parent; color: "#ff0d0a14"; z: -100 }
+    Image {
+        anchors.fill: parent
+        source: "file:///media/developer/launcher-screensaver/vice-bg.jpg"
+        fillMode: Image.PreserveAspectCrop
+        sourceSize.width: 1920
+        sourceSize.height: 1080
+    }
+    Rectangle {  // darker towards the bottom-left, where the text sits
+        anchors.fill: parent
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: "#40000000" }
+            GradientStop { position: 0.55; color: "#66000000" }
+            GradientStop { position: 1.0; color: "#cc000000" }
+        }
+    }
+
+    Column {
+        id: info
+        x: 120 + (drift % 5) * 8
+        y: 640 - (drift % 3) * 8
+        spacing: 6
+        Text { id: clock; color: "white"; font.pixelSize: 168; font.weight: Font.Light; text: Qt.formatTime(new Date(), "HH:mm") }
+        Text { id: day; color: "#e6ffffff"; font.pixelSize: 40; text: Qt.formatDate(new Date(), "dddd d MMMM") }
+        Item { width: 1; height: 18 }
+        Text { color: "#d9ffffff"; font.pixelSize: 32; text: win.weather; visible: text !== "" }
+        Text { color: "#b3ffffff"; font.pixelSize: 28; text: win.status; visible: text !== "" }
+    }
+
+    function get(path, done) {
+        var x = new XMLHttpRequest();
+        x.onreadystatechange = function () {
+            if (x.readyState === 4 && x.status === 200) { try { done(JSON.parse(x.responseText)); } catch (e) {} }
+        };
+        x.open("GET", path.indexOf("http") === 0 ? path : api + path);
+        if (path.indexOf("http") !== 0) x.setRequestHeader("Authorization", "Bearer " + key);
+        x.send();
+    }
+    property var wmo: ({0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Fog", 48: "Fog",
+        51: "Light drizzle", 53: "Drizzle", 55: "Drizzle", 61: "Light rain", 63: "Rain", 65: "Heavy rain",
+        71: "Light snow", 73: "Snow", 75: "Heavy snow", 80: "Showers", 81: "Showers", 82: "Heavy showers", 95: "Thunderstorms"})
+    function refresh() {
+        get("https://api.open-meteo.com/v1/forecast?latitude=51.5072&longitude=-0.1276&current=temperature_2m,weather_code&timezone=Europe%2FLondon",
+            function (r) { win.weather = "London  ·  " + Math.round(r.current.temperature_2m) + "°  " + (wmo[r.current.weather_code] || ""); });
+        var parts = {};
+        function show() {
+            var out = [];
+            if (parts.lab) out.push(parts.lab);
+            if (parts.ps5) out.push(parts.ps5);
+            if (parts.ps3) out.push(parts.ps3);
+            win.status = out.join("   ·   ");
+        }
+        get("/api/status", function (r) { parts.lab = r.line || ""; show(); });
+        get("/api/ps5", function (r) {
+            parts.ps5 = r.playing ? "PS5 · " + r.playing : (r.last && r.last.name ? "Last played: " + r.last.name : "");
+            show();
+        });
+        get("/api/ps3", function (r) { parts.ps3 = r.on ? "PS3 on" + (r.game ? " · " + r.game : "") : ""; show(); });
+    }
+    Timer {
+        interval: 1000; running: true; repeat: true
+        onTriggered: { var d = new Date(); clock.text = Qt.formatTime(d, "HH:mm"); day.text = Qt.formatDate(d, "dddd d MMMM"); }
+    }
+    Timer { interval: 60000; running: true; repeat: true; onTriggered: { win.drift += 1; win.refresh(); } }
+    Component.onCompleted: refresh()
+}

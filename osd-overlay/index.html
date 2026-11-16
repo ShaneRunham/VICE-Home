@@ -1,0 +1,81 @@
+<!doctype html>
+<!-- Vice OSD overlay (vice-layer-plan.md step 6): Vice OSD cards over any app or input on the LG.
+     An overlay window (appinfo defaultWindowType "overlay", transparent) that never takes the remote. vice-tv asks
+     Home Assistant to open it (webostv.command system.launcher/launch, params {vice, key}); it collects its cards from
+     vice-tv, shows them one at a time like Vice Home, and closes when there are none left.
+     vice.css is Vice Home's own stylesheet, copied in by build.py, so the card is exactly Vice Home's. -->
+<meta charset="utf-8">
+<link rel="stylesheet" href="vice.css">
+<style>
+html,body{background:transparent!important}  /* vice.css paints Home's dark page; here only the card shows */
+</style>
+<div class="card osd" id="osd"></div>
+<script>
+(function () {
+  // never take the remote: keys stay with the app underneath (without this a press didn't reach YouTube). At load
+  // the window isn't active yet, so it's checked again every half second (it was still active after one call).
+  function unfocus() { try { if (webOSSystem.isActivated !== false) webOSSystem.window.setFocus(false); } catch (e) {} }
+  unfocus();
+
+  var P = {};
+  function params(raw) { try { var p = JSON.parse(raw || "{}"); if (p.vice) P = p; } catch (e) {} }
+  params(window.webOSSystem && webOSSystem.launchParams);
+  document.addEventListener("webOSRelaunch", function (e) { params(JSON.stringify(e.detail || {})); poll(); });
+
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  // the same Lucide icons (stroke 1.65) as Vice Home's OSD
+  function ic(d) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">' + d + "</svg>"; }
+  var IC = {
+    server: ic('<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/>'),
+    phone: ic('<rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/>'),
+    bell: ic('<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>'),
+    radio: ic('<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>')
+  };
+
+  var q = [], on = false, idleSince = Date.now(), cur = null, done = null;
+  // a tag cleared (e.g. the call was answered): drop those cards, and take the one showing off now
+  function clear(tags) {
+    if (!tags || !tags.length) return;
+    q = q.filter(function (o) { return !o.tag || tags.indexOf(o.tag) < 0; });
+    if (cur && cur.tag && tags.indexOf(cur.tag) >= 0 && done) done();
+  }
+  function next() {
+    if (on || !q.length) return;
+    var o = q.shift(), el = document.getElementById("osd");
+    el.innerHTML = '<div class="ic">' + (o.art ? '<div class="bl"></div><img alt="">' : IC[o.icon] || IC.bell) + "</div>" +
+      "<div><h4>" + esc(o.title) + "</h4><p>" + (o.dot === "bad" ? '<span class="dot bad"></span>' : "") + esc(o.line) +
+      (o.em ? (o.line ? " · " : "") + "<em>" + esc(o.em) + "</em>" : "") + (o.sub ? '<br><span class="last">' + esc(o.sub) + "</span>" : "") + "</p></div>";
+    if (o.art) { var a = o.art.charAt(0) === "/" ? P.vice + o.art : o.art; el.querySelector(".bl").style.backgroundImage = 'url("' + a + '")'; el.querySelector("img").src = a; }
+    on = true; cur = o; el.classList.add("show");
+    var t = setTimeout(done = function () {
+      clearTimeout(t); done = null; cur = null;
+      el.classList.remove("show");
+      setTimeout(function () { on = false; idleSince = Date.now(); next(); }, 400);
+    }, (o.ttl || 8) * 1000);
+  }
+  function poll(done) {
+    if (!P.vice) return done && done();
+    var x = new XMLHttpRequest();
+    x.open("GET", P.vice + "/api/osd?overlay=1");
+    if (P.key) x.setRequestHeader("Authorization", "Bearer " + P.key);  // a header, so the key isn't in vice-tv's log
+    x.timeout = 4000;
+    x.onload = function () {
+      try { var r = JSON.parse(x.responseText); (r.items || []).forEach(function (o) { q.push(o); }); next(); clear(r.clear); } catch (e) {}
+      if (done) done();
+    };
+    x.onerror = x.ontimeout = function () { if (done) done(); };
+    x.send();
+  }
+  poll();
+  setInterval(poll, 1000);
+  // nothing showing or waiting for 3 s: one last look for cards, then close (vice-tv opens it again for the next card,
+  // and reopens it if a card isn't taken within 4 s)
+  var closing = false;
+  setInterval(function () {
+    unfocus();
+    if (closing || on || q.length || Date.now() - idleSince < 3000) return;
+    closing = true;
+    poll(function () { if (!on && !q.length) window.close(); else { closing = false; idleSince = Date.now(); } });
+  }, 500);
+})();
+</script>

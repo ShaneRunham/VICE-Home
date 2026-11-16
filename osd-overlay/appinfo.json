@@ -1,0 +1,19 @@
+{
+  "id": "app.vice.osd",
+  "version": "1.0.0",
+  "vendor": "Vice",
+  "type": "web",
+  "main": "index.html",
+  "title": "Vice OSD",
+  "icon": "icon.png",
+  "transparent": true,
+  "defaultWindowType": "overlay",
+  "visible": false,
+  "noSplashOnLaunch": true,
+  "spinnerOnLaunch": false,
+  "disableBackHistoryAPI": true,
+  "enableKeyboard": false,
+  "handlesRelaunch": true,
+  "resolution": "1920x1080",
+  "uiRevision": 2
+}

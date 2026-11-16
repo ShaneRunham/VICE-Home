@@ -1,0 +1,31 @@
+# Runs on the local Forgejo runner (~/homelab/README.md › Forgejo) after every push.
+# Results: https://fedora.tailnet.ts.net:8448/shane/tv-launcher; the Discord bot reports a failed run.
+on: [push]
+
+defaults:
+  run:
+    shell: sh
+
+env:
+  FETCH: >-
+    wget -qO- --header="Authorization: token ${{ forgejo.token }}"
+    "http://forgejo:3000/api/v1/repos/${{ forgejo.repository }}/archive/${{ forgejo.sha }}.tar.gz"
+    | tar xz --strip-components=1
+
+jobs:
+  python:
+    # vice-tv service: syntax, undefined names, bad imports (pyflakes). tools/ is dev-only and left out.
+    runs-on: docker
+    container: { image: "python:3.14-alpine" }
+    steps:
+      - run: eval "$FETCH"
+      - run: pip install -q --root-user-action=ignore pyflakes
+      - run: python -m pyflakes service/*.py build.py
+
+  javascript:
+    # Syntax check of the TV page and the test tools.
+    runs-on: docker
+    container: { image: "node:22-alpine" }
+    steps:
+      - run: eval "$FETCH"
+      - run: find . -name '*.js' -o -name '*.mjs' | grep -v node_modules | xargs -n1 node --check

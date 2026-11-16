@@ -1,0 +1,9 @@
+/* TEST variants, switched by classes on <html> */
+html.nomask #page-home,html.nomask .grid-wrap{-webkit-mask-image:none;mask-image:none}
+html.lay .rows,html.lay .grid,html.lay .rows .tile,html.lay .rows .card{will-change:transform}
+html.xfade .scrim,html.xfade body.deep .scrim,html.xfade body.tab-apps .scrim,html.xfade body.tab-settings .scrim{background:none}
+html.xfade .scrim::before,html.xfade .scrim::after{content:"";position:absolute;inset:0;transition:opacity .35s;will-change:opacity}
+html.xfade .scrim::before{background:linear-gradient(90deg,rgba(10,6,20,.45) 0%,rgba(10,6,20,.12) 45%,rgba(10,6,20,0) 70%),linear-gradient(180deg,rgba(10,6,20,.18) 0%,rgba(10,6,20,0) 25%,rgba(10,6,20,.15) 45%,rgba(10,6,20,.62) 100%)}
+html.xfade .scrim::after{background:rgba(10,6,20,.5);opacity:0}
+html.xfade body.deep .scrim::before,html.xfade body.tab-apps .scrim::before,html.xfade body.tab-settings .scrim::before{opacity:0}
+html.xfade body.deep .scrim::after,html.xfade body.tab-apps .scrim::after,html.xfade body.tab-settings .scrim::after{opacity:1}

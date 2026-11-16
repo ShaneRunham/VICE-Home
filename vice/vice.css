@@ -1,0 +1,224 @@
+@font-face{font-family:Inter;src:url(inter-latin.woff2) format("woff2");font-weight:100 900}
+/* motion: everything moves with one ease-out curve, so it starts the moment a key is pressed and settles softly.
+   The rows, the Apps grid and the Home tiles keep their own GPU layers, so moving and zooming them doesn't repaint
+   the page (measured on the TV 2026-11-12: 36 -> 58 fps while moving around Home) */
+.rows,.grid,.rows .tile,.rows .card{will-change:transform}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1920px;height:1080px;overflow:hidden;background:#0d0a14}
+body{font-family:Inter,sans-serif;color:#fff;position:relative;-webkit-font-smoothing:antialiased;cursor:none}
+svg{display:block}
+.hidden{display:none!important}
+
+.bgvid{position:absolute;inset:0;width:1920px;height:1080px;object-fit:cover;background:#0d0a14 url(img/poster.jpg) center/cover}
+.bgstill{position:absolute;inset:0;background:#0d0a14 url(img/poster.jpg) center/cover;opacity:0;visibility:hidden;transition:opacity 1.2s}
+body.radio .bgstill{opacity:1;visibility:visible;will-change:transform;animation:drift 50s ease-in-out infinite alternate}
+@keyframes drift{from{transform:scale(1.03) translate(0,0)}to{transform:scale(1.1) translate(-2%,-1.2%)}}
+/* the shade: the gradient on Home, a flat dim further down and on Apps/Settings, cross-faded (a gradient can't transition) */
+.scrim{position:absolute;inset:0}
+.scrim::before,.scrim::after{content:"";position:absolute;inset:0;transition:opacity .35s;will-change:opacity}
+.scrim::before{background:
+  linear-gradient(90deg,rgba(10,6,20,.45) 0%,rgba(10,6,20,.12) 45%,rgba(10,6,20,0) 70%),
+  linear-gradient(180deg,rgba(10,6,20,.18) 0%,rgba(10,6,20,0) 25%,rgba(10,6,20,.15) 45%,rgba(10,6,20,.62) 100%)}
+.scrim::after{background:rgba(10,6,20,.5);opacity:0}
+body.deep .scrim::before,body.tab-apps .scrim::before,body.tab-settings .scrim::before{opacity:0}
+body.deep .scrim::after,body.tab-apps .scrim::after,body.tab-settings .scrim::after{opacity:1}
+
+/* header */
+.top{position:absolute;left:0;top:0;width:1920px;height:150px;z-index:5}
+.clock{position:absolute;left:84px;top:62px;font-size:25px;font-weight:450;opacity:.92;font-variant-numeric:tabular-nums}
+.pill{position:absolute;left:773px;top:43px;width:374px;height:68px;border-radius:34px;background:rgba(38,38,44,.78);display:flex;align-items:center;padding:0 10px;gap:6px}
+.tab{font-size:21px;font-weight:500;padding:12px 23px;border-radius:26px;color:rgba(255,255,255,.82);border:3px solid transparent}
+.tab.on{background:#f2f2f2;color:#141414}
+.tab.f{border-color:#fff;color:#fff}
+.tab.on.f{box-shadow:0 0 0 3px rgba(38,38,44,.9) inset;color:#141414}
+.rounds{position:absolute;right:84px;top:47px;display:flex;gap:20px}
+.round{width:60px;height:60px;border-radius:30px;background:rgba(38,38,44,.78);display:grid;place-items:center;color:#fff}
+.round svg{width:24px;height:24px}
+.round.f{background:#f2f2f2;color:#141414}
+
+/* home */
+.page{position:absolute;inset:0}
+#page-home{-webkit-mask-image:linear-gradient(180deg,#000 88%,transparent);mask-image:linear-gradient(180deg,#000 88%,transparent)}  /* the next row fades out at the bottom edge */
+.hero{position:absolute;left:84px;top:0;transition:opacity .35s}
+.date{text-shadow:0 1px 3px rgba(0,0,0,.55),0 2px 14px rgba(0,0,0,.35);position:absolute;left:0;top:196px;font-size:18px;letter-spacing:3.2px;font-weight:500;opacity:.72;white-space:nowrap}
+.greet{position:absolute;left:0;top:232px;font-size:90px;font-weight:600;letter-spacing:-5px;white-space:nowrap;text-shadow:0 2px 24px rgba(0,0,0,.18)}
+.info{text-shadow:0 1px 3px rgba(0,0,0,.6),0 2px 16px rgba(0,0,0,.45);position:absolute;left:-16px;top:349px;display:flex;align-items:center;font-size:23px;color:rgba(255,255,255,.86);gap:12px;white-space:nowrap;padding:6px 16px;border-radius:14px;background:rgba(14,10,24,.42)}  /* the backing: it crossed the figures unreadably (2026-11-16) */
+.info span{display:flex;align-items:center;gap:12px}
+.info svg{width:26px;height:26px;opacity:.75}
+.info b{color:#fff;font-weight:500}
+.info .sep{opacity:.5}
+.info .gap{width:18px}
+.info span.gta:not(.gap){display:block}  /* plain text flow: no flex gap inside "GTA VI in 7 days" */
+.dot{width:9px;height:9px;border-radius:5px;background:#7ee2a8;box-shadow:0 0 0 3px rgba(126,226,168,.18)}
+.dot.bad{background:#ff8a7a;box-shadow:0 0 0 3px rgba(255,138,122,.2)}
+.dot.off{background:#9a96a3;box-shadow:none}
+
+.rows{position:absolute;left:84px;top:480px;width:1752px;transition:transform .35s cubic-bezier(.2,.8,.2,1),opacity .8s}
+body.deep .rows{transform:translateY(-280px)}
+body.deeper .rows{transform:translateY(-547px)}  /* the GTA VI news row (fourth) */
+.rows > *{transition:opacity .25s}
+body.deeper .rows > :nth-child(-n+2){opacity:0}  /* Favorites would slide under the top bar */
+/* GTA VI news (Rockstar Newswire): the post's picture with its title over a soft shade */
+.tile.news{width:418px;background:#1d1b23}
+.tile.news img.full{position:absolute;inset:0;object-position:50% 18%}  /* centred cut the key art's logo off (2026-11-16) */
+.tile.news .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,6,20,0) 25%,rgba(10,6,20,.62) 58%,rgba(10,6,20,.95) 100%)}
+.tile.news .txt{text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.tile.news .new{position:absolute;top:12px;left:14px;font-size:13px;font-weight:600;letter-spacing:1px;padding:5px 10px;border-radius:9px;background:#f2f2f2;color:#141414}
+.nphotos .ph.vid{position:relative}
+.nphotos .ph.vid::after{content:"";position:absolute;left:50%;top:50%;margin:-12px 0 0 -8px;border-left:22px solid #fff;border-top:12px solid transparent;border-bottom:12px solid transparent;filter:drop-shadow(0 1px 4px rgba(0,0,0,.7))}
+.tile.news .txt{position:absolute;left:20px;right:20px;bottom:14px}
+.news .src{font-size:15px;color:rgba(255,255,255,.72);white-space:nowrap;margin-bottom:4px}
+.news .hl{font-size:20px;font-weight:600;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+#sheet-news{padding:120px 84px 0;justify-content:center}
+.panel.news{width:1752px;display:flex;gap:36px;padding:30px}
+.nhero{width:800px;height:450px;object-fit:cover;border-radius:14px;flex:none;background:#1d1b23}
+.nbody{flex:1;min-width:0}
+.nmeta{font-size:16px;letter-spacing:2px;color:rgba(255,255,255,.62);font-weight:500;margin:4px 0 10px}
+.panel.news h2{font-size:38px;line-height:1.15;margin-bottom:6px}
+.nphotos{display:flex;gap:14px;margin-top:26px;flex-wrap:wrap}
+.nphotos .ph{width:176px;height:99px;border-radius:10px;overflow:hidden;flex:none;border:3px solid transparent}
+.nphotos .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.nphotos .ph.f{border-color:#fff;transform:scale(1.06)}
+.viewer{position:absolute;inset:0;z-index:30;background:#050308;display:flex;align-items:center;justify-content:center}
+.viewer img{max-width:1920px;max-height:1080px;object-fit:contain}
+.vcap{position:absolute;left:0;right:0;bottom:0;padding:80px 84px 44px;display:flex;justify-content:space-between;align-items:flex-end;gap:40px;font-size:21px;line-height:1.45;color:rgba(255,255,255,.9);background:linear-gradient(180deg,rgba(5,3,8,0) 0%,rgba(5,3,8,.88) 55%)}
+.vcap span{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;max-width:1500px}
+.vcap b{font-weight:500;white-space:nowrap}
+.panel.news .btn{white-space:nowrap}
+body.deep .hero{opacity:0}
+.label{font-size:22px;font-weight:500;opacity:.92;height:65px;line-height:30px;text-shadow:0 1px 3px rgba(0,0,0,.6),0 2px 14px rgba(0,0,0,.45)}  /* readable over the bright wallpaper */
+.label i{font-style:normal;opacity:.68;font-weight:400;margin-left:14px;font-size:19px}
+.row{display:flex;gap:26px;height:202px}
+#row-inputs{height:152px}  /* 104px cards + the same 48px gap as under the Favorites tiles */
+/* every Home row spans the same 1750 px (the right edge of the top bar's round buttons), tiles sharing it equally:
+   7 favourites, 3 inputs, the PC tiles, 4 news cards (2026-11-12, Shane: the rows were all different widths) */
+#row-fav .tile{width:228px}  /* 7 tiles since Vice Radio joined (2026-11-13), was 6 x 270 */
+#row-inputs .card{width:566px}
+/* Play on PC tiles share the row however many there are (a 5th tile at 418 px went off the screen, 2026-11-13);
+   at 4 (Desktop hidden) they are 418 px, the same as the GTA VI news cards below */
+#row-pc{width:1750px}
+#row-pc .tile{flex:1 1 0;width:auto;min-width:0}
+.tile{width:256px;height:154px;border-radius:14px;overflow:hidden;position:relative;flex:none;box-shadow:0 8px 24px rgba(0,0,0,.25);background:rgba(32,32,38,.88);transition:transform .15s cubic-bezier(.2,.8,.2,1)}
+.tile img.full{width:100%;height:100%;object-fit:cover;display:block}
+.tile.wide{width:330px}
+.tile .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-size:19px;font-weight:500;text-align:center;padding:0 16px}
+.tile .mid svg{width:44px;height:44px}
+.tile .mid img.icon{width:84px;height:84px;object-fit:contain}
+.tile .mid img.logo{width:62%;max-height:56px;object-fit:contain}
+.tile .mid img.logo.white{filter:brightness(0) invert(1)}  /* brand logos in white on a dark tile (2026-11-16: white tiles stood out) */
+.tile .mid img.logo[src*="itvx"],.tile .mid img.logo[src*="now-tv"]{width:52%;max-height:120px}  /* square icons with padding: they were tiny */
+.tile.game{background-size:cover;background-position:center}
+.tile.game .mid img.glogo{width:78%;object-fit:contain}
+/* focus: a white ring with a gap, so it shows on white tiles too (Kodi, ITVX, Prime) */
+.f.tile,.f.card{outline:4px solid #fff;outline-offset:5px;transform:scale(1.05);box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.card{width:538px;height:104px;border-radius:14px;background:rgba(32,32,38,.82);box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;align-items:center;gap:18px;padding:0 20px;flex:none;transition:transform .15s cubic-bezier(.2,.8,.2,1)}
+/* one frame for every input icon (game art, PlayStation, HDMI, Sky) so the titles line up */
+.ic{width:100px;height:56px;border-radius:12px;background:rgba(255,255,255,.1);display:grid;place-items:center;flex:none;position:relative;overflow:hidden}
+.ic svg{width:28px;height:28px}
+.ic svg.logo{width:auto}
+.ic svg.sky{height:28px}
+.ic svg.ps5,.ic svg.ps3{height:14px}
+.ic svg.nswitch{height:26px}
+.card h4{font-size:25px;font-weight:450;margin-bottom:6px}
+.card p{font-size:17px;color:rgba(255,255,255,.62);letter-spacing:.2px;white-space:nowrap}
+.card p em{font-style:normal;color:#fff;opacity:.9}
+.empty{font-size:20px;color:rgba(255,255,255,.62);padding-top:50px}
+
+/* apps */
+.grid-wrap{position:absolute;left:60px;top:158px;width:1800px;height:922px;overflow:hidden;padding:0 24px;-webkit-mask-image:linear-gradient(180deg,#000 82%,transparent);mask-image:linear-gradient(180deg,#000 82%,transparent)}  /* padding: room for the focus ring */
+.grid{display:flex;flex-wrap:wrap;gap:0 36px;padding-top:24px;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.cell{width:262px;height:240px;display:flex;flex-direction:column;align-items:center;gap:18px}
+.cell .tile{width:262px;height:156px}
+.cell span{font-size:20px;font-weight:500;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.8),0 2px 12px rgba(0,0,0,.6)}
+.cell.f span{color:#fff}
+
+/* settings */
+.set-wrap{position:absolute;left:84px;top:200px}
+.about{margin-top:44px;display:inline-flex;align-items:center;gap:28px;font-size:19px;color:rgba(255,255,255,.82);line-height:1.5;text-shadow:0 1px 3px rgba(0,0,0,.6),0 2px 14px rgba(0,0,0,.4);padding:20px 32px 20px 20px;border-radius:14px;background:rgba(32,32,38,.82);box-shadow:0 8px 24px rgba(0,0,0,.25)}  /* a panel like the cards (2026-11-16) */
+.about .qr{width:168px;height:168px;border-radius:14px;background:#fff;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.about b{display:block;font-size:24px;font-weight:500;color:#fff;margin-bottom:6px}
+.about span{display:block}
+
+/* sheets */
+.sheet{position:absolute;inset:0;z-index:10;background:rgba(8,5,14,.55);display:flex;align-items:flex-start;justify-content:flex-end;padding:140px 84px 0 0}
+.panel{background:rgba(30,28,36,.94);border-radius:22px;padding:30px 34px 34px;width:640px;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.panel.wide{width:980px}
+.panel h2{font-size:30px;font-weight:600;letter-spacing:-.5px;margin-bottom:18px}
+.prow{display:flex;flex-wrap:wrap;gap:14px;margin-top:14px}
+.btn{font-size:20px;font-weight:500;padding:14px 24px;border-radius:30px;background:rgba(255,255,255,.1);border:3px solid transparent;display:flex;align-items:center;gap:10px}
+.btn.f{background:#f2f2f2;color:#141414}
+.sw{width:56px;height:56px;border-radius:28px;border:3px solid rgba(255,255,255,.25)}
+.btn.on{box-shadow:inset 0 0 0 3px rgba(255,255,255,.75)}
+.btn.on.f{box-shadow:none}
+.sw.on{border-color:#fff}
+.sw.f{border-color:#fff;transform:scale(1.12);box-shadow:0 0 0 4px rgba(255,255,255,.35)}
+.note{font-size:18px;color:rgba(255,255,255,.62);margin-top:14px;min-height:24px;line-height:1.5}
+.askbar{display:flex;gap:14px;margin-top:18px}
+.askbar input{flex:1;font:inherit;font-size:24px;color:#fff;background:rgba(255,255,255,.08);border:3px solid transparent;border-radius:16px;padding:14px 20px;outline:none}
+.askbar input.f{border-color:#fff}
+.reply{margin-top:22px;font-size:24px;line-height:1.5;white-space:pre-wrap}
+.reply:empty,#ask-quick:empty{display:none}
+.reply.wait{color:rgba(255,255,255,.62)}
+
+.toast{position:absolute;left:50%;bottom:60px;transform:translateX(-50%) translateY(20px);opacity:0;z-index:20;background:rgba(30,28,36,.95);padding:16px 28px;border-radius:30px;font-size:21px;transition:opacity .25s,transform .25s;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.cell.f .tile{outline:4px solid #fff;outline-offset:5px;transform:scale(1.05);box-shadow:0 14px 40px rgba(0,0,0,.45)}
+.tile.ico{background:#1d1b23}
+.tile.ico .mid img.icon{width:100px;height:100px;border-radius:18px}
+.tile.ico.flat .mid img.icon{width:128px;height:128px;border-radius:0}
+.tile.ico .blur{position:absolute;inset:-30px;background-size:cover;background-position:center;filter:blur(26px) brightness(.62) saturate(1.3)}
+.tile.ico .mid{z-index:1}
+#sheet-apps .panel{width:1500px}
+#apps-list .btn{width:262px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#apps-list .btn.off{opacity:.45;text-decoration:line-through}
+.card p .last{opacity:.75}
+.card p{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:22px;min-height:44px}  /* two lines in every input card, so all have the same shape */
+.card > div:last-child{min-width:0}
+
+/* Vice Radio (2026-11-13): Favorites tile, info line, idle now-playing view */
+.tile.radio{background:linear-gradient(135deg,#2a2236,#16121d)}
+.tile.radio .art{position:absolute;inset:0;background-size:cover;background-position:center}
+.tile.radio .noart{position:absolute;right:-18px;top:-10px;opacity:.16}
+.tile.radio .noart svg{width:150px;height:150px}
+.tile.radio .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,6,20,0) 22%,rgba(10,6,20,.6) 55%,rgba(10,6,20,.94) 100%)}
+.tile.radio .txt{position:absolute;left:16px;right:14px;bottom:12px;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.tile.radio .txt span.k{display:block;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;opacity:.75}
+.tile.radio .txt b{display:block;font-size:18px;font-weight:600;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.radio .txt i{display:block;font-style:normal;font-size:14px;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.radio .live{position:absolute;top:11px;left:12px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;letter-spacing:1px;padding:5px 9px;border-radius:9px;background:#f2f2f2;color:#141414}
+.tile.radio .live svg{width:11px;height:11px}
+.info .np b{max-width:360px;overflow:hidden;text-overflow:ellipsis}
+.info .np span{display:block;max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nowview{position:absolute;inset:0;z-index:30;background:rgba(10,6,20,.5);display:flex;align-items:center;gap:72px;padding:0 180px;transition:opacity .8s}
+.nowview.off{opacity:0;visibility:hidden;pointer-events:none;transition:opacity .8s,visibility 0s .8s}  /* hidden: no layer to composite */
+.nv-art{width:520px;height:520px;flex:none;border-radius:20px;overflow:hidden;background:rgba(32,32,38,.88);display:grid;place-items:center;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+.nv-art img{width:100%;height:100%;object-fit:cover;display:block}
+.nv-art svg{width:160px;height:160px;opacity:.8}
+.nv-txt{min-width:0;text-shadow:0 2px 16px rgba(0,0,0,.45)}
+.nv-src{font-size:20px;letter-spacing:3px;text-transform:uppercase;font-weight:500;opacity:.7}
+.nowview h2{font-size:72px;font-weight:600;letter-spacing:-3px;line-height:1.05;margin:22px 0 18px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.nv-artist{font-size:36px;font-weight:500}
+.nv-album{font-size:24px;opacity:.6;margin-top:10px}
+/* while it shows, Home fades away: only the clock and the wallpaper stay */
+.pill,.rounds,#page-home{transition:opacity .8s}
+body.np .pill,body.np .rounds,body.np #page-home{opacity:0}
+/* Settings tiles share the full 1750 px like every Home row (were 5 x 256) */
+#row-set{width:1750px}
+#row-set .tile{flex:1 1 0;width:auto}
+.nv-hint{position:absolute;left:180px;bottom:64px;font-size:18px;letter-spacing:1px;opacity:.5}
+#sheet-radio .note{margin:-6px 0 22px}
+/* Vice Ident (2026-11-14, vice-layer-plan.md): when the TV comes on, Home's own pieces arrive in turn: the wallpaper,
+   then the date, greeting and info line, then the top bar and rows, all with the now-playing view's 0.8 s fade */
+.top{transition:opacity .8s}
+body.ident .top,body.ident .rows{opacity:0}
+body.ident .hero,body.ident .bgvid{transition:opacity .8s}
+body.ident-1 .hero,body.ident-1 .bgvid{opacity:0}
+body.ident-cut .top,body.ident-cut .rows,body.ident-cut .hero,body.ident-cut .bgvid{transition:none}
+/* Vice OSD (2026-11-14, vice-layer-plan.md): an Inputs card in the toast's colour, top right under the round buttons
+   (right edge = the edge every Home row ends at, top = where the sheets open). Above the now-playing view. */
+.osd{position:absolute;right:84px;top:140px;z-index:35;width:566px;background:rgba(30,28,36,.95);box-shadow:0 24px 60px rgba(0,0,0,.5);opacity:0;transform:translateY(-12px);transition:opacity .25s,transform .25s;pointer-events:none}
+.osd.show{opacity:1;transform:none}
+.osd h4{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.osd .ic .bl{position:absolute;inset:-20px;background-size:cover;background-position:center;filter:blur(14px) brightness(.62) saturate(1.3)}
+.osd .ic img{position:relative;height:56px;width:56px;object-fit:cover}
+.osd p .dot{display:inline-block;margin:0 10px 1px 2px;vertical-align:middle}

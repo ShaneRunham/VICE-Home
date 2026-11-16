@@ -1,0 +1,13 @@
+# Third-party projects kept for reference (they have their own git history)
+reference/
+
+# Runtime state and generated files
+service/last-played.json
+__pycache__/
+*.pyc
+service/news-img/
+tools/perf/test.ipk
+tools/perf/log.jsonl
+tools/perf/variant.txt
+tools/perf/web/
+tools/perf/profile-*/
