@@ -18,7 +18,7 @@ bridge.pairing_key set, every call here needs the same key (Authorization: Beare
     POST /api/radio/skip       skip the song (on a station visit: back to own music)
     GET  /api/radio            what Vice Radio is playing: {src, station, artist, title, album, dir, since, cover}
     GET  /radio-cover/<id>.jpg album cover (600 px), id = sha1("Artist/Album")[:16]
-    POST /api/osd              a Vice OSD card: {"title", "line", "em", "sub", "icon", "dot", "art", "ttl"}. On Vice Home
+    POST /api/osd              a Vice OSD card: {"title", "line", "em", "sub", "icon", "dot", "art", "ttl", "accent"}. On Vice Home
                                when it's on screen, else over whatever the TV shows (the overlay app app.vice.osd,
                                opened through HA); {"ok", "shown": bool}: false when the TV is off (HA falls back).
                                Optional "tag": POST /api/osd/clear {"tag"} takes cards with that tag off again
@@ -62,6 +62,7 @@ STEAM_CACHE = f"{HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam/appca
 COVERS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "covers")
 STEAM_USERDATA = f"{HOME}/.var/app/com.valvesoftware.Steam/.local/share/Steam/userdata"
 HA_COVERS = f"{HOME}/homelab/home-assistant/config/www/vice-panel/covers"  # game art HA saves (scripts/cover.py)
+HA_FOOTBALL = f"{HOME}/homelab/home-assistant/config/www/vice-panel/football"  # crests (vice-football, 2026-11-17)
 GTA6_FEED = os.path.expanduser("~/homelab/home-assistant/config/www/vice-panel/gta6.json")  # Rockstar's GTA VI posts (bot's rockstar_news.py)
 # display-size copies of the news pictures, in HA's www so the Vice panel can load them from HA too (/local/vice-panel/news/)
 NEWS_IMG = os.path.expanduser("~/homelab/home-assistant/config/www/vice-panel/news")
@@ -639,10 +640,12 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path == "/phone" or path.startswith("/phone/"):   # Vice Phone's files: no key (the page holds it)
             return self.send_phone(path)
-        if path.startswith("/covers/"):   # images: no key, they're only game art
+        if path.startswith("/covers/") or path.startswith("/football/"):   # images: no key (game art, football crests)
             name = os.path.basename(path)
             f = os.path.join(COVERS, name)
-            if not os.path.isfile(f):
+            if path.startswith("/football/"):
+                f = os.path.join(HA_FOOTBALL, name)
+            elif not os.path.isfile(f):
                 f = os.path.join(HA_COVERS, name)
             if not re.fullmatch(r"[\w.-]+\.(jpg|png)", name) or not os.path.isfile(f):
                 return self.send_json(404, {"ok": False})
@@ -971,6 +974,7 @@ def osd_post(body):
     item["title"] = title[:80]
     item["icon"] = body.get("icon") if body.get("icon") in OSD_ICONS else "bell"
     item["dot"] = "bad" if body.get("dot") == "bad" else ""
+    item["accent"] = "pink" if body.get("accent") == "pink" else ""   # our goal (Vice Football): pink edge
     try:
         item["ttl"] = max(3, min(int(body.get("ttl") or 8), 30))
     except (TypeError, ValueError):

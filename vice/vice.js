@@ -952,6 +952,7 @@
       "<div><h4>" + esc(o.title) + "</h4><p>" + (o.dot === "bad" ? '<span class="dot bad"></span>' : "") + esc(o.line) +
       (o.em ? (o.line ? " · " : "") + "<em>" + esc(o.em) + "</em>" : "") + (o.sub ? '<br><span class="last">' + esc(o.sub) + "</span>" : "") + "</p></div>";
     if (o.art) { el.querySelector(".bl").style.backgroundImage = 'url("' + o.art + '")'; el.querySelector("img").src = o.art; }
+    el.classList.toggle("ours", o.accent === "pink");  // Vice Football: our goal
     osdOn = true; osdCur = o; el.classList.add("show");
     var t = setTimeout(osdDone = function () {
       clearTimeout(t); osdDone = null; osdCur = null;

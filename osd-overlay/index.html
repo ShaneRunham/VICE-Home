@@ -46,6 +46,7 @@ html,body{background:transparent!important}  /* vice.css paints Home's dark page
       "<div><h4>" + esc(o.title) + "</h4><p>" + (o.dot === "bad" ? '<span class="dot bad"></span>' : "") + esc(o.line) +
       (o.em ? (o.line ? " · " : "") + "<em>" + esc(o.em) + "</em>" : "") + (o.sub ? '<br><span class="last">' + esc(o.sub) + "</span>" : "") + "</p></div>";
     if (o.art) { var a = o.art.charAt(0) === "/" ? P.vice + o.art : o.art; el.querySelector(".bl").style.backgroundImage = 'url("' + a + '")'; el.querySelector("img").src = a; }
+    el.classList.toggle("ours", o.accent === "pink");  // Vice Football: our goal
     on = true; cur = o; el.classList.add("show");
     var t = setTimeout(done = function () {
       clearTimeout(t); done = null; cur = null;
