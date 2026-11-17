@@ -84,7 +84,8 @@ function drawBar() {
   const w = (S.ph && S.ph.wanted) || {};
   $("barStars").innerHTML = w.stars || w.evading ? stars(w.stars, w.evading) : "";
   const n = S.now, r = S.radio;
-  $("barMid").textContent = n && n.power === "on" ? `TV · ${(n.app && n.app.name) || "On"}` : r && r.title ? `♪ ${r.title}` : "";
+  const app = n && n.app && n.app.name && n.app.name !== "Home" ? n.app.name : null;
+  $("barMid").textContent = n && n.power === "on" ? (app ? `TV · ${app}` : "TV on") : r && r.title ? `♪ ${r.title}` : "";
   const c = (w.crimes || []).length, b = $("b-wanted");
   b.hidden = !c; b.textContent = c;
   const line = w.stars ? `${stars(w.stars, 0)}<span>${esc((w.crimes[0] || {}).what || "Wanted")}</span>`
@@ -97,12 +98,12 @@ function open(id) {
   if (id === "map") { location.href = "homeassistant://navigate/vice-map"; return; }
   const sec = document.querySelector(`.app[data-app="${id}"]`); if (!sec) return;
   if (S.open) document.querySelector(`.app[data-app="${S.open}"]`).classList.remove("show");
-  sec.classList.add("show"); S.open = id; history.pushState({ app: id }, "");
+  sec.classList.add("show"); S.open = id; history.pushState({ app: id }, ""); document.body.classList.add("inapp");
   buzz(); draw[id] && draw[id](true);
 }
 window.addEventListener("popstate", () => {
   if ($("sheet").classList.contains("show")) { $("sheet").classList.remove("show"); if (S.open) history.pushState({ app: S.open }, ""); return; }
-  if (S.open) { document.querySelector(`.app[data-app="${S.open}"]`).classList.remove("show"); S.open = null; }
+  if (S.open) { document.querySelector(`.app[data-app="${S.open}"]`).classList.remove("show"); S.open = null; document.body.classList.remove("inapp"); }
 });
 function sheet(html) { $("pick").innerHTML = html; $("sheet").classList.add("show"); }
 function closeSheet() { $("sheet").classList.remove("show"); }
@@ -121,7 +122,10 @@ $("vDown").innerHTML = I.minus; $("vUp").innerHTML = I.plus; $("vMute").innerHTM
 const key = (k) => { buzz(); bridge("/api/key", { key: k }).catch((e) => toast(e.message)); };
 document.querySelectorAll("[data-key]").forEach((b) => b.addEventListener("click", () => key(b.dataset.key)));
 document.querySelectorAll("[data-vol]").forEach((b) => b.addEventListener("click", () => {
-  buzz(); bridge("/api/volume", { action: b.dataset.vol }).then((r) => { if (S.now) S.now.volume = r.volume; draw.remote(); }).catch((e) => toast(e.message));
+  // the bridge answers with the level from before the press: show the new one straight away, the next poll confirms it
+  buzz(); const a = b.dataset.vol, v = S.now && S.now.volume; S.volAt = Date.now();
+  if (v && v.known) { if (a === "mute") v.muted = !v.muted; else v.level = Math.max(0, Math.min(100, v.level + (a === "up" ? 1 : -1))); draw.remote(); }
+  bridge("/api/volume", { action: a }).catch((e) => toast(e.message));
 }));
 $("pwr").addEventListener("click", () => {
   const on = S.now && S.now.power === "on";
@@ -211,7 +215,9 @@ draw.watch = async (first) => {
   let d;
   try { d = await bridge("/api/recs"); } catch (e) { $("watch").innerHTML = `<p class="empty">${esc(e.message)}</p>`; return; }
   const card = (x, act, arg, sub) => `<div class="poster" data-do="${act}" data-arg="${esc(arg)}"><div class="p" style="background-image:url('${esc(x.poster || "")}')"></div><h5>${esc(x.title)}</h5><p>${esc(sub)}</p></div>`;
-  const cont = (d.continue || []).map((x) => card(x, "resume", x.id, x.season ? `S${x.season} E${x.episode}${x.app ? " · " + x.app.name : ""}` : (x.app && x.app.name) || ""));
+  // keep watching: wide cards on the show's still (backdrop), like a TV home row
+  const cont = (d.continue || []).map((x) => `<div class="wide" data-do="resume" data-arg="${esc(x.id)}"><div class="p" style="background-image:url('${esc(x.backdrop || x.poster || "")}')"><b>${esc(x.title)}</b></div>
+    <p>${esc([x.season ? `S${x.season} E${x.episode}` : "", x.app && x.app.name].filter(Boolean).join(" · "))}</p></div>`);
   const picks = (d.picks || []).map((x) => card(x, "play", JSON.stringify({ title: x.title, service: x.service }), x.reason || x.year || ""));
   $("watch").innerHTML = `<div class="label">Keep watching</div>${cont.length ? `<div class="shelf">${cont.join("")}</div>` : '<p class="empty">Nothing on the go. Shows you play from here or Ask land here.</p>'}
     <div class="label">Picks for you</div>${picks.length ? `<div class="shelf">${picks.join("")}</div>` : '<p class="empty">No picks yet: they come from what you watch.</p>'}`;
@@ -220,7 +226,8 @@ draw.watch = async (first) => {
 // ---------- Ask (Claude through the bridge) ----------
 const askLog = store.get("vice.ask", []);
 function drawAsk() {
-  $("askLog").innerHTML = (askLog.length ? "" : '<div class="msg note">Ask for anything to watch: "put on the latest Bluey", "something funny on Netflix".</div>') +
+  $("askLog").innerHTML = (askLog.length ? "" : `<div class="hello"><div class="hi">${I.ask}</div><h3>What do you fancy?</h3><p>Ask for a show, a film or an app, and it goes on the TV.</p>
+    <div class="chips">${["Put on the latest Bluey", "Something funny on Netflix", "What's new on Disney+?"].map((t) => `<span class="chip" data-do="askopt" data-arg="${esc(t)}">${esc(t)}</span>`).join("")}</div></div>`) +
     askLog.map((m, i) => `<div class="msg ${m.me ? "me" : "them"}">${m.wait ? '<span class="typing"><i></i><i></i><i></i></span>' : esc(m.text)}${
       !m.me && m.options && m.options.length && i === askLog.length - 1 ? `<div class="opts">${m.options.map((o) => `<span class="chip" data-do="askopt" data-arg="${esc(o.text)}">${esc(o.label)}</span>`).join("")}</div>` : ""}</div>`).join("");
   $("askLog").scrollTop = 1e6;
@@ -285,7 +292,8 @@ function contact(id) {
 // ---------- Messages (to the TV, as a Vice OSD card) ----------
 const msgs = store.get("vice.msgs", []);
 draw.messages = () => {
-  $("msgLog").innerHTML = (msgs.length ? "" : '<div class="msg note">Whatever you send pops up on the TV as a Vice card.</div>') +
+  $("msgQuick").innerHTML = ["Dinner's ready", "Turn it down", "Bedtime", "Back in 5", "Pause it a sec"].map((t) => `<span class="chip" data-do="quickmsg" data-arg="${esc(t)}">${esc(t)}</span>`).join("");
+  $("msgLog").innerHTML = (msgs.length ? "" : `<div class="hello"><div class="hi">${I.messages}</div><h3>Text the TV</h3><p>It pops up on screen as a Vice card, over whatever's on.</p></div>`) +
     msgs.map((m) => `<div class="msg me">${esc(m.text)}</div><div class="msg note">${m.shown === "card" ? "Shown on the TV" : m.shown === "toast" ? "Shown on the TV (pop-up)" : m.shown === true ? "Shown on the TV" : m.err ? esc(m.err) : "The TV is off: not shown"} · ${new Date(m.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</div>`).join("");
   $("msgLog").scrollTop = 1e6;
 };
@@ -313,7 +321,7 @@ draw.wanted = () => {
   const w = (S.ph && S.ph.wanted) || { stars: 0, crimes: [] };
   const h = `${stars(w.stars, w.evading, "stars bigstars")}<p class="wsub">${w.stars ? `Wanted · ${w.crimes.length} on the rap sheet` : w.evading ? "Evading…" : "No heat. All quiet."}</p>
     <div class="list">${w.crimes.map((c) => `<div class="row bad"><div class="av">${I.wanted}</div><div class="t"><h4>${esc(c.what)}</h4><p>${"★".repeat(c.stars)} · ${ago(c.since)}</p></div></div>`).join("")}</div>
-    <div class="chips" style="margin-top:18px"><span class="btn go" data-do="openapp" data-arg="map">Open Vice Map</span></div>`;
+    <div class="chips center" style="margin-top:18px"><span class="btn go" data-do="openapp" data-arg="map">Open Vice Map</span></div>`;
   if ($("wanted")._h !== h) { $("wanted")._h = h; $("wanted").innerHTML = h; }
 };
 
@@ -335,6 +343,7 @@ function act(a, arg, el) {
     case "resume": toast("Opening…"); return run(bridge("/api/continue/open", { id: arg }, 60000), (r) => r.note || `Playing ${r.title || ""}`);
     case "play": toast("Finding it…"); return run(bridge("/api/play", JSON.parse(arg), 60000), (r) => r.note || `Playing ${r.title || ""}`);
     case "askopt": return ask(arg);
+    case "quickmsg": $("msgText").value = arg; return $("msgForm").requestSubmit();
     case "contact": return contact(arg);
     case "light": return run(api("/api/light", { cmd: [arg] }), arg === "on" ? "Light on" : "Light off").then(() => { closeSheet(); setTimeout(pollPhone, 800); });
     case "white": return run(api("/api/light", { cmd: ["white", arg] }), el.textContent).then(() => setTimeout(() => { pollPhone().then(() => contact("light")); }, 800));
@@ -350,7 +359,11 @@ function act(a, arg, el) {
 
 // ---------- keeping up to date ----------
 async function poll() {
-  try { S.now = await bridge("/api/now"); } catch (e) { S.now = null; }
+  try {
+    const n = await bridge("/api/now");
+    if (S.now && S.now.volume && Date.now() - (S.volAt || 0) < 4000) n.volume = S.now.volume;  // a poll from before the press
+    S.now = n;
+  } catch (e) { S.now = null; }
   drawBar(); if (S.open === "remote") draw.remote();
 }
 async function pollPhone() {
