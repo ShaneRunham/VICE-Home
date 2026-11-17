@@ -30,8 +30,8 @@ and the phone remote's QR code. The light and Ask (Claude) buttons are top right
 <img src="https://raw.githubusercontent.com/ShaneRunham/ShaneRunham/main/screens/vice-home/osd-card.jpg" alt="An on-screen card with the Wanted stars" width="100%">
 
 Cards slide in at the top right for homelab problems (with the Wanted stars), "Lost them" when they're fixed,
-reminders, the phone ringing, a new song on the radio and messages from Vice Phone. On Vice Home they're drawn by the
-page; over any other app or input a tiny overlay app (`osd-overlay`) shows them, and the TV's own pop-up is the
+reminders, the phone ringing, a new song on the radio and messages from Vice Phone. On VICE Home they're drawn by the
+home screen itself; over any other app or input a tiny overlay app (`osd-overlay`) shows them, and the TV's own pop-up is the
 fallback. A short Vice Ident plays when the TV turns on.
 
 ## Vice Phone
