@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#0d0a14">
+<title>Vice Phone</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="phone.css">
+</head>
+<body>
+<!-- Vice Phone (2026-11-17): the Pixel's remote for the homelab, served by vice-tv (~/tv-launcher/service) at /phone/.
+     phone.js draws everything; each app is a <section class="app" data-app="...">. -->
+<div class="bar" id="bar"><span class="barMid" id="barMid"></span><span class="barStars" id="barStars"></span></div>
+
+<main class="home" id="home">
+  <div class="hclock" id="hclock"></div>
+  <div class="hdate" id="hdate"></div>
+  <div class="hline" id="hline"></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<section class="app" data-app="remote">
+  <header><span class="bk" data-back></span><h1>Remote</h1><span class="hbtn" id="pwr" title="Power"></span></header>
+  <div class="body">
+    <p class="tvline" id="tvline"></p>
+    <div class="pad" id="pad"><span class="padhint" id="padhint">Swipe to move · tap for OK</span></div>
+    <div class="row3">
+      <span class="key" data-key="back" id="kBack"></span><span class="key" data-key="home" id="kHome"></span><span class="key" data-key="play_pause" id="kPlay"></span>
+    </div>
+    <div class="vol"><span class="key" data-vol="down" id="vDown"></span><span class="vlvl" id="vlvl"></span><span class="key" data-vol="up" id="vUp"></span><span class="key" data-vol="mute" id="vMute"></span></div>
+    <div class="chips" id="inputs"></div>
+    <div class="chips">
+      <span class="chip" id="mode">Trackpad</span><span class="chip" id="type">Type</span><span class="chip" id="appsBtn">Apps</span><span class="chip" id="sleepBtn">Sleep</span><span class="chip" id="picBtn" hidden>Picture</span>
+    </div>
+  </div>
+</section>
+
+<section class="app" data-app="watch">
+  <header><span class="bk" data-back></span><h1>Watch</h1></header>
+  <div class="body" id="watch"></div>
+</section>
+
+<section class="app" data-app="ask">
+  <header><span class="bk" data-back></span><h1>Ask</h1></header>
+  <div class="chat" id="askLog"></div>
+  <form class="compose" id="askForm"><span class="mic" id="askMic" hidden></span><input id="askText" placeholder="Put on Bluey…" autocomplete="off" enterkeyhint="send"><button>Send</button></form>
+</section>
+
+<section class="app" data-app="contacts">
+  <header><span class="bk" data-back></span><h1>Contacts</h1></header>
+  <div class="body" id="contacts"></div>
+</section>
+
+<section class="app" data-app="messages">
+  <header><span class="bk" data-back></span><h1>LG TV</h1><span class="hsub">Messages show on the TV</span></header>
+  <div class="chat" id="msgLog"></div>
+  <form class="compose" id="msgForm"><input id="msgText" placeholder="Text the TV…" maxlength="80" autocomplete="off" enterkeyhint="send"><button>Send</button></form>
+</section>
+
+<section class="app" data-app="radio">
+  <header><span class="bk" data-back></span><h1>Vice Radio</h1></header>
+  <div class="body radio" id="radio"></div>
+</section>
+
+<section class="app" data-app="wanted">
+  <header><span class="bk" data-back></span><h1>Wanted</h1></header>
+  <div class="body" id="wanted"></div>
+</section>
+
+<div class="sheet" id="sheet"><div class="pick" id="pick"></div></div>
+<div class="toast" id="toast"></div>
+<audio id="audio" preload="none"></audio>
+<script src="phone.js"></script>
+</body>
+</html>

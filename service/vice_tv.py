@@ -25,6 +25,12 @@ bridge.pairing_key set, every call here needs the same key (Authorization: Beare
     GET  /api/osd?after=<id>   Vice Home's poll (every 2 s while it shows): {"items": [...], "last": id}
     GET  /api/osd?overlay=1    the overlay app's poll: its cards not yet taken
     GET  /api/tv/woke          {"woke": bool}: the TV turned on in the last 3 minutes (HA history), for Vice Home's Ident
+
+  Vice Phone (2026-11-17, ~/tv-launcher/phone, the Pixel's remote; replaced couch-tv's phone remote):
+    GET  /phone/<file>         the web app itself (no key: the page asks for it once and keeps it)
+    GET|POST /bridge/api/...   passed to the couch-tv bridge (127.0.0.1:5400) with its key: remote keys, apps, Ask...
+    GET  /api/phone            everything the phone shows in one call: tv, ps5, switch, light, pc, wanted
+    POST /api/phone/act        {"act": "ps5_on" | "ps5_rest" | "switch_tv" | "pc_lock" | "pc_vscode" | "input" | "message", "arg"}
 """
 import glob
 import hashlib
@@ -631,6 +637,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0]
+        if path == "/phone" or path.startswith("/phone/"):   # Vice Phone's files: no key (the page holds it)
+            return self.send_phone(path)
         if path.startswith("/covers/"):   # images: no key, they're only game art
             name = os.path.basename(path)
             f = os.path.join(COVERS, name)
@@ -760,17 +768,60 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, osd_get(int(m.group(1)) if m else -1, int(i.group(1)) if i else 0))
         if path == "/api/health":
             return self.send_json(200, {"ok": True})
+        if path.startswith("/bridge/api/"):
+            return self.bridge(None)
+        if path == "/api/phone":
+            try:
+                return self.send_json(200, {"ok": True, **cached("phone", 3, phone_state)})
+            except Exception as e:  # noqa: BLE001  (HA down: the phone shows what it can)
+                return self.send_json(502, {"ok": False, "error": f"{type(e).__name__}: {e}"[:200]})
         self.send_json(404, {"ok": False, "error": "no such endpoint"})
+
+    def send_phone(self, path):
+        name = path.removeprefix("/phone").lstrip("/") or "index.html"
+        f = os.path.realpath(os.path.join(PHONE_DIR, name))
+        if not f.startswith(PHONE_DIR + os.sep) or not os.path.isfile(f):
+            return self.send_json(404, {"ok": False})
+        data = open(f, "rb").read()
+        self.send_response(200)
+        self.send_header("Content-Type", PHONE_TYPES.get(os.path.splitext(f)[1], "application/octet-stream"))
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache")   # a change shows on the next open
+        self.end_headers()
+        self.wfile.write(data)
+
+    def bridge(self, body):
+        """Pass a Vice Phone call on to the couch-tv bridge with the bridge's own key (same key as ours)."""
+        url = "http://127.0.0.1:5400" + self.path.removeprefix("/bridge")
+        key = pairing_key()
+        req = urllib.request.Request(url, data=None if body is None else body, method="GET" if body is None else "POST",
+                                     headers={"Content-Type": "application/json", **({"Authorization": f"Bearer {key}"} if key else {})})
+        try:
+            r = urllib.request.urlopen(req, timeout=100)   # Ask can take up to ~90 s
+            code, data = r.status, r.read()
+        except urllib.error.HTTPError as e:
+            code, data = e.code, e.read()
+        except OSError as e:
+            return self.send_json(503, {"ok": False, "error": f"The TV bridge isn't answering ({type(e).__name__})"})
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.cors()
+        self.end_headers()
+        self.wfile.write(data)
 
     def do_POST(self):
         if not self.authorised():
             return self.send_json(401, {"ok": False, "error": "pairing key needed"})
         n = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(n) if n else b""
+        path = self.path.split("?")[0]
+        if path.startswith("/bridge/api/"):
+            return self.bridge(raw or b"{}")
         try:
-            body = json.loads(self.rfile.read(n) or b"{}") if n else {}
+            body = json.loads(raw or b"{}")
         except ValueError:
             return self.send_json(400, {"ok": False, "error": "bad JSON"})
-        path = self.path.split("?")[0]
         if path == "/api/ps5/wake":
             return self.send_json(200, wake_ps5())
         if path == "/api/radio/skip":   # next song (or back from a station visit); the station has the rules
@@ -792,7 +843,90 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/osd/clear":
             code, out = osd_clear(body if isinstance(body, dict) else {})
             return self.send_json(code, out)
+        if path == "/api/phone/act":
+            code, out = phone_act(str(body.get("act") or ""), str(body.get("arg") or ""))
+            _cache.pop("phone", None)
+            return self.send_json(code, out)
         self.send_json(404, {"ok": False, "error": "no such endpoint"})
+
+
+# ---------- Vice Phone (2026-11-17, ~/tv-launcher/phone) ----------
+PHONE_DIR = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "phone"))
+PHONE_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css",
+               ".webmanifest": "application/manifest+json", ".png": "image/png", ".svg": "image/svg+xml",
+               ".woff2": "font/woff2", ".jpg": "image/jpeg", ".mp3": "audio/mpeg"}
+
+
+def phone_state():
+    """One HA read (all states) cut down to what the phone shows."""
+    st = {s["entity_id"]: s for s in gaming.ha("/api/states", timeout=10)}
+    S = lambda e: (st.get(e) or {}).get("state")  # noqa: E731
+    A = lambda e, a: ((st.get(e) or {}).get("attributes") or {}).get(a)  # noqa: E731
+    num = lambda e: float(S(e)) if S(e) not in (None, "unknown", "unavailable") else None  # noqa: E731
+    try:
+        w = json.load(open(HOMELAB_STATE)).get("wanted") or {}
+    except (OSError, ValueError):
+        w = {}
+    tv_on = S("media_player.lg_tv") not in ("off", "standby", "unavailable", "unknown", None)
+    playing = S("media_player.playstation_5") == "playing" and A("media_player.playstation_5", "media_title")
+    return {
+        "tv": {"on": tv_on, "source": A("media_player.lg_tv", "source"),
+               "sources": [x for x in PHONE_INPUTS if x in (A("media_player.lg_tv", "source_list") or [])]},
+        "ps5": {"on": S("switch.ps5") == "on", "playing": playing or None, "last": S("sensor.ps5_last_game")},
+        "switch": {"on": S("binary_sensor.nintendo_switch") == "on", "minutes": num("sensor.bedroom_sam_s_switch_used_screen_time")},
+        "light": {"on": S("light.ceiling_light") == "on", "pct": round((A("light.ceiling_light", "brightness") or 0) / 2.55),
+                  "kelvin": A("light.ceiling_light", "color_temp_kelvin"), "mode": A("light.ceiling_light", "color_mode")},
+        "pc": {"cpu": num("sensor.system_monitor_processor_use"), "ram": num("sensor.system_monitor_memory_usage"),
+               "temp": num("sensor.system_monitor_processor_temperature")},
+        "wanted": {"stars": w.get("stars", 0), "evading": w.get("evading", 0), "crimes": w.get("crimes", [])},
+    }
+
+
+PHONE_INPUTS = ["Vice Home", "PS5 Game Console", "Nintendo Switch", "Sky Box"]  # what the phone offers, by HA source name
+PHONE_ACTS = {
+    "ps5_on": ("/api/services/switch/turn_on", {"entity_id": "switch.ps5"}),
+    "ps5_rest": ("/api/services/switch/turn_off", {"entity_id": "switch.ps5"}),
+    "switch_tv": ("/api/services/script/turn_on", {"entity_id": "script.switch_on_tv"}),
+    "pc_lock": ("/api/services/rest_command/pc_lock", {}),
+    "pc_vscode": ("/api/services/rest_command/pc_vscode", {}),
+}
+
+
+def phone_message(text):
+    """A message from Vice Phone: a Vice card (on Home, or over anything through the overlay), else, like HA's alerts,
+    the TV's own pop-up (Home under LG's screensaver). {"shown": "card" | "toast" | false}."""
+    code, out = osd_post({"title": text[:80], "line": "Message", "em": "from Shane's phone", "icon": "phone", "ttl": 12})
+    if code == 200 and out.get("shown"):
+        return 200, {"ok": True, "shown": "card"}
+    try:  # HA says "playing" (not "on") for the LG on Home, so anything but off counts
+        state = gaming.ha("/api/states/media_player.lg_tv", timeout=5)["state"]
+    except Exception:  # noqa: BLE001
+        state = "unavailable"
+    if state in ("off", "standby", "unavailable", "unknown"):
+        return 200, {"ok": True, "shown": False}
+    try:
+        gaming.ha("/api/services/notify/lg_webos_tv_55qned87a6b_bekfljp", {"message": f"Shane: {text[:90]}"}, timeout=15)
+    except Exception as e:  # noqa: BLE001
+        return 502, {"ok": False, "error": f"Home Assistant: {type(e).__name__}"}
+    return 200, {"ok": True, "shown": "toast"}
+
+
+def phone_act(act, arg):
+    if act == "message":
+        return phone_message(arg.strip()) if arg.strip() else (400, {"ok": False, "error": "empty message"})
+    if act == "input":
+        if arg not in PHONE_INPUTS:
+            return 400, {"ok": False, "error": "unknown input"}
+        path, data = "/api/services/media_player/select_source", {"entity_id": "media_player.lg_tv", "source": arg}
+    elif act in PHONE_ACTS:
+        path, data = PHONE_ACTS[act]
+    else:
+        return 400, {"ok": False, "error": "unknown action"}
+    try:
+        gaming.ha(path, data, timeout=30)
+    except Exception as e:  # noqa: BLE001
+        return 502, {"ok": False, "error": f"Home Assistant: {type(e).__name__}"}
+    return 200, {"ok": True}
 
 
 # ---------- Vice OSD (vice-layer-plan.md): cards on Vice Home, or over anything else through the overlay app ----------
