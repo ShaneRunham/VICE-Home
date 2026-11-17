@@ -662,9 +662,10 @@
       t.innerHTML = '<div class="mid">' + s[1] + esc(s[0]) + "</div>"; t._act = s[2]; row.appendChild(t);
     });
     var host = (BRIDGE || "").replace(/^https?:\/\//, "");
-    $("about").innerHTML = '<img class="qr" src="img/remote-qr.svg" alt=""><div><b>Phone remote</b>' +
-      "<span>Point your phone's camera at the code to open the remote, already paired.</span>" +
-      "<span>" + esc(host || "Not connected") + (param("offline") ? " · the PC isn't answering, so this is the offline copy" : "") + "</span></div>";
+    // Vice Phone (2026-11-17): the code opens it on the tailnet, already paired (tools/make-remote-qr.py)
+    $("about").innerHTML = '<img class="qr" src="img/remote-qr.svg" alt=""><div><b>Vice Phone</b>' +
+      "<span>Point your phone's camera at the code to open the remote, already paired. Needs Tailscale on the phone.</span>" +
+      "<span>" + (host ? "Bridge connected" : "Bridge not connected") + (param("offline") ? " · the PC isn't answering, so this is the offline copy" : "") + "</span></div>";
   }
 
   // ---------- light ----------

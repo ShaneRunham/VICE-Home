@@ -943,7 +943,9 @@ PC_LAN = "http://192.168.0.10:5401"  # the overlay runs on the TV, which reaches
 
 def tv_on():
     try:
-        return cached("tv-on", 5, lambda: gaming.ha("/api/states/media_player.lg_tv", timeout=5)["state"]) == "on"
+        # HA says "playing" (not "on") for the LG on Vice Home and in apps: anything but off/standby counts
+        return cached("tv-on", 5, lambda: gaming.ha("/api/states/media_player.lg_tv", timeout=5)["state"]) not in (
+            "off", "standby", "unavailable", "unknown")
     except Exception:  # noqa: BLE001  (HA down)
         return False
 
